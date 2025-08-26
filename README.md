@@ -70,7 +70,7 @@ the system through staff and doctors.
 - **Maintainable** - As more features are added and system complexity increases, the
   code should stay readable, clear, and well tested
 
-> [!TIP] \
+> [!TIP]\
 > **Consistency** is about the **DATA** state and integrity! \
 > **Reliability** is about correct **SYSTEM** behavior!
 
@@ -90,7 +90,7 @@ the system through staff and doctors.
   - open: Time
   - close: Time
 
-> [!NOTE] \
+> [!NOTE]\
 > In discussing timezones I suggested that we could store the the open/close times
 > naively, along with the timezone; I compared this to how MongoDB stores all datetimes
 > in UTC, requiring us to handle conversions later.
