@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI(
     title="Appointment Scheduler API",
     description="Dual REST/GraphQL API for appointment scheduling",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Add CORS middleware
@@ -16,16 +16,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 async def root():
     return {
         "message": "Appointment Scheduler API",
-        "endpoints": {
-            "rest_docs": "/docs",
-            "graphql": "/graphql",
-            "health": "/health"
-        }
+        "endpoints": {"rest_docs": "/docs", "graphql": "/graphql", "health": "/health"},
     }
+
 
 @app.get("/health")
 async def health_check():

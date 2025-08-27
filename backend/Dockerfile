@@ -5,9 +5,10 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies needed for Python packages
+# gcc: C compiler needed for psycopg2-binary
+# Clean apt cache to reduce image size
 RUN apt-get update && apt-get install -y \
-    gcc \                                    # C compiler needed for psycopg2-binary
-    && rm -rf /var/lib/apt/lists/*          # Clean apt cache to reduce image size
+    gcc && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements file first (before source code)
 # This creates a separate Docker layer that can be cached
