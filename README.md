@@ -213,6 +213,16 @@ the system through staff and doctors.
 >     - In 1 year -> 800000 * 365 = 292M entries a year
 >   - This wouldn't be maintainable/extensible, what if doctors wanted to change to
 >     shorter appointments or change their start times?
+>     - Rethinking this, I think this would work fine actually; we would need to track
+>       duration at the doctor level (if all their appointments would be the same) or on
+>       the appointment in addition to start time.
+>     - We would also need to handle validation to make sure invalid availability blocks
+>       arent created. 
+>     - I think it depends on if the doctors need custom time blocks of different
+>       lengths or if all their meetings would be the same duration. It might be easiest
+>       to break things down into smaller blocks and then have doctors block off more
+>       timeslots for a patient if needed, but I believe that typically all timeslots
+>       would be the same duration.
 >   - Extra checks when removing availability (what if slot was already booked?)
 > - Other considerations
 >   - Could perform regular cleanup on past appointments to keep the size of the
