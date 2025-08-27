@@ -17,6 +17,7 @@ services:
       timeout: 5s                        # Wait max 5 seconds for response
       retries: 5                         # Try 5 times before marking unhealthy
 
+  # Redis cache service
   redis:
     image: redis:7                       # Use official Redis 7 image
     restart: always                      # Restart container if it crashes
