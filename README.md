@@ -59,14 +59,15 @@ the system through staff and doctors.
 - **Consistent** - Strong consistency ensures concurrent booking operations maintain
   data integrity and prevent race conditions like double-booking the same time slot
 - **Available** - Doctors and staff rely on this system to book their patients; we need
-  99.9% uptime during business hours
+  99.9% uptime during business hours; high availability for searching availabilities
 - **Reliable** - System handles failures gracefully, validates all inputs, and maintains
   correct operation even under high load or component failures
 - **Performant** - Since a lot of people are going to be using the system and multiple
   bookings may take place simulataneously, the system must be responsive (<200ms
   response time for schedule retrieval)
 - **Scalable** - As more facilities, doctors, staff, and patients are added, the system
-  should be able to scale horizontally to accomodate new growth
+  should be able to scale horizontally to accomodate new growth; likely to get more use
+  during work hours.
 - **Maintainable** - As more features are added and system complexity increases, the
   code should stay readable, clear, and well tested
 
@@ -244,6 +245,7 @@ the system through staff and doctors.
   - doctor_fk: int
   - appointment_time: datetime
   - patient_fk: int
+  - scheduler_fk: <doctor_or_staff>
 
 ### Database Selection
 Based on the relational nature of the data as well as the importance of data consistency
@@ -301,6 +303,7 @@ are two main API endpoints to create.
 - `POST` `/appointments`  (I accidentally called this "schedule", which is not RESTlike)
   - `BODY`
     ```json
+    header: JWT|SessionToken containing user information
     {
         'doctor_pk': <doctor_pk>,
         'patient_pk': <patient_pk>,
@@ -349,6 +352,11 @@ bit more on this.
 >     we would actually need to lock the doctor object to prevent it from being edited,
 >     prioritizing the appointment, which doesn't make sense. This actually argues in
 >     favor of having the prepopulated table so that we can create these locks.
+> - Distributed Lock - put a "reservation" on the slot when the person clicks in and
+>   store that appointment ID with a TTL in an in-memory cache. When retrieving
+>   available appointments also mark the reserved slots in addition to available and
+>   booked. This would give a singular consistent lock across a horizontally scaled
+>   system.
 
 - **Q:** Say you were going to expand this API to allow third-party access. Would you
   still prefer RESTful or consider something like GraphQL?
