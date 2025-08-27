@@ -382,6 +382,29 @@ bit more on this.
     - Read replicas for calendar views
     - Redis caching for frequently accessed availability data
     - Load balancing across partition replicas
+- **Monitoring & Observability**
+  - How would you monitor double-booking attempts?
+  - Alerting for high concurrent booking failures
+  - Metrics for appointment utilization rates
+- **Backup & Disaster Recovery**
+  - How do you handle database failures during peak booking times?
+  - Cross-region failover strategies
+  - Data backup frequency for critical appointment data
+- **Load Balancing Strategy**
+  - How to distribute load across hospital partitions
+  - Handling hot spots (popular doctors/times)
+  - Circuit breaker patterns for database overload
+- **API Rate Limiting**
+  - Preventing spam bookings or DoS attacks
+  - Different limits for staff vs automated systems
+  - Graceful degradation under load
+- **Edge Cases**
+  - What happens when appointments run over time?
+  - Handling emergency appointments that break normal scheduling
+  - Doctor unavailability (sick days, emergencies)
+- **Migration Strategy**
+  - How would you migrate from an existing scheduling system?
+  - Zero-downtime deployments for a critical healthcare system
 
 ## Technical Implementation
 
