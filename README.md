@@ -127,9 +127,11 @@ the system through staff and doctors.
 > year in a dict and just store start and stop times for each index where each index
 > represented a day. This approach would give very fast lookups and allow actions like
 > slicing to get ranges of data, but the write performance would be not great. So I
-> switched availablity just be a dict mapping a date to a start and end time. \
+> switched availablity just be a dict mapping a date to a start and end time.
+>
 > **Q:** What would happen if a doctor had multiple shifts of availability in a day? \
-> **A:** Instead of storing the dict
+> **A:** Instead of storing the dict, you could instead store a list of dicts for each
+> day and iterate over them to get the results needed.
 >
 > I should have gone into more detail about the trade-offs of different storage options.
 > Looking at this approach of storing a blob in the table, I'm definitely treating this
@@ -220,6 +222,8 @@ the system through staff and doctors.
 >      slots are booked
 >   - `appointment_time` stored as naive DATETIME (no timezone info in the field itself)
 >   would need to join with doctor/hospital timezone to properly display for end user.
+> - **Conclusion:** I think the correct approach for our use case was to create the
+>   appointments table and prepopulate it.
 
 - Patient
   - id: int (auto-increment)
@@ -317,8 +321,11 @@ bit more on this.
 > I did not discuss this in enough detail, mostly because I don't have enough experience
 > with this topic. I don't think I actually knew what a lock is doing.
 > 
-> What does it mean to place a lock on a collection? This is overkill and would prevent
-> the system from working. Better approaches would be: \
+> **What does it mean to place a lock on a collection/table?** Database locks can occur
+> at different levels (table, row, page) and types (shared/read, exclusive/write). A 
+> table-level lock prevents other transactions from modifying (or sometimes even
+> reading) the entire table until the lock is released. This is overkill and would
+> prevent the system from working. Better approaches would be:
 > - Within the collection itself the race condition is readily solved by optimistic
 > locking (assume that collisions are rare and detect after they happen). This is a bit
 > of a misnomer as there is no locking taking place, just the end goal of locking out
@@ -432,13 +439,39 @@ REST API: http://localhost:8000/docs
 GraphQL: http://localhost:8000/graphql
 ```
 
+### Docker Architecture
+
+**docker-compose.yml** orchestrates three services:
+- **db**: PostgreSQL 15 with persistent volume, health checks
+- **backend**: FastAPI app with hot reload, waits for db health check
+- **frontend**: Vue 3 dev server with hot reload
+
+**Key Docker concepts demonstrated:**
+- **Health checks**: Backend waits for database to be ready before starting
+- **Volume mounting**: Live code reloading during development
+- **Service dependencies**: `depends_on` with health conditions
+- **Environment variables**: Database connection strings, CORS origins
+- **Port mapping**: Internal container ports mapped to localhost
+
+**Backend Dockerfile** (Python):
+- Multi-stage approach: install dependencies first, then copy code
+- Uses `python:3.11-slim` for smaller image size
+- Installs gcc for psycopg2-binary compilation
+- Leverages Docker layer caching by copying requirements.txt first
+
+**Frontend Dockerfile** (Node.js):
+- Uses `node:18-alpine` for minimal footprint  
+- npm install before copying source for better caching
+- Runs Vite dev server with host binding for container access
+
 ### Project Structure
 ```
 appointment-scheduler/
-├── docker-compose.yml
+├── docker-compose.yml        # Orchestrates all services
+├── .env                     # Environment variables
 ├── backend/
-│   ├── Dockerfile
-│   ├── requirements.txt
+│   ├── Dockerfile           # Python FastAPI container
+│   ├── requirements.txt     # Python dependencies
 │   └── app/
 │       ├── main.py
 │       ├── models/
@@ -447,7 +480,8 @@ appointment-scheduler/
 │       │   └── graphql/
 │       └── core/
 ├── frontend/
-│   ├── Dockerfile
+│   ├── Dockerfile           # Node.js Vue container  
+│   ├── package.json         # npm dependencies
 │   └── src/
 └── README.md
 ```

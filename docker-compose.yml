@@ -1,52 +1,58 @@
 services:
+  # PostgreSQL database service
   db:
-    image: postgres:15
-    restart: always
+    image: postgres:15                    # Use official PostgreSQL 15 image
+    restart: always                       # Restart container if it crashes
     environment:
-      POSTGRES_DB: appointment_scheduler
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: appointment_scheduler  # Create database on startup
+      POSTGRES_USER: postgres            # Set username (default admin user)
+      POSTGRES_PASSWORD: postgres        # Set password (change in production!)
     ports:
-      - "5432:5432"
+      - "5432:5432"                      # Map container port 5432 to host port 5432
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data  # Persist database data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U postgres"]  # Test if PostgreSQL is ready
+      interval: 10s                      # Check every 10 seconds
+      timeout: 5s                        # Wait max 5 seconds for response
+      retries: 5                         # Try 5 times before marking unhealthy
 
+  # FastAPI backend service
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
-    restart: always
+      context: ./backend                 # Build context (where Dockerfile is)
+      dockerfile: Dockerfile             # Dockerfile name (default, but explicit)
+    restart: always                      # Restart if container crashes
     environment:
+      # Database connection string using service name 'db' as hostname
       DATABASE_URL: postgresql://postgres:postgres@db:5432/appointment_scheduler
-      CORS_ORIGINS: "http://localhost:3000"
+      CORS_ORIGINS: "http://localhost:3000"  # Allow frontend to access API
     ports:
-      - "8000:8000"
+      - "8000:8000"                      # Map container port 8000 to host port 8000
     volumes:
-      - ./backend:/app
+      - ./backend:/app                   # Mount source code for hot reload
     depends_on:
       db:
-        condition: service_healthy
+        condition: service_healthy       # Wait for database to be healthy before starting
+    # Override default command to enable hot reload in development
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  # Vue.js frontend service
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    restart: always
+      context: ./frontend                # Build context for frontend
+      dockerfile: Dockerfile             # Frontend Dockerfile
+    restart: always                      # Restart if container crashes
     ports:
-      - "3000:3000"
+      - "3000:3000"                      # Map container port 3000 to host port 3000
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - ./frontend:/app                  # Mount source code for hot reload
+      - /app/node_modules               # Anonymous volume for node_modules (performance)
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=development            # Set Node environment to development
     depends_on:
-      - backend
+      - backend                         # Start after backend (but don't wait for health)
 
+# Named volumes for data persistence
 volumes:
-  postgres_data:
+  postgres_data:                        # Persistent storage for PostgreSQL data
