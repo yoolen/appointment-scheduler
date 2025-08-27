@@ -215,100 +215,215 @@ the system through staff and doctors.
 > - Other considerations
 >   - Could perform regular cleanup on past appointments to keep the size of the
 >   data down.
->   - This would allow caching and easily removing entries as they are booked.
+>   - Discrete appointment records enable efficient caching strategies
+>     - Availability can be cached per doctor/date and invalidated granularly when
+>      slots are booked
 >   - `appointment_time` stored as naive DATETIME (no timezone info in the field itself)
 >   would need to join with doctor/hospital timezone to properly display for end user.
 
+- Patient
+  - id: int (auto-increment)
+  - name: str
 
+- Appointment
+  - id: int (auto-increment)
+  - doctor_fk: int
+  - appointment_time: datetime
+  - patient_fk: int
 
-### CAP Theorem Decision: Consistency over Availability
+### Database Selection
+Based on the relational nature of the data as well as the importance of data consistency
+I'd likely choose a relational store.
 
-**Why Consistency was chosen:**
-- **Double-booking prevention**: Critical that two patients cannot book the same time slot
-- **Safety-critical operations**: Medical appointments directly impact patient care
-- **Financial/operational impact**: Double-bookings create chaos and potential liability
-- **User trust**: Healthcare staff must have complete confidence in the system
+> [!NOTE] Additional in depth discussion\
+> #### CAP Theorem Decision: Consistency over Availability
+> 
+> **Why Consistency was chosen:**
+> - **Double-booking prevention**: Critical that two patients cannot book the same time
+>  slot
+> - **Safety-critical operations**: Medical appointments directly impact patient care
+> - **Financial/operational impact**: Double-bookings create chaos and potential
+> liability
+> - **User trust**: Healthcare staff must have complete confidence in the system
+> 
+> **How to achieve Consistency at Scale:**
+> - **Database partitioning** by hospital/region (each facility's data is largely
+> independent)
+> - **Read replicas** to handle the 10:1 read/write ratio efficiently
+> - **Strategic caching** for calendar views and availability lookups
+> - **Optimistic locking** for appointment conflict resolution
+> - **Strong consistency within each hospital partition**
+> 
+> **Where Eventual Consistency is acceptable:**
+> - Notifications and alerts
+> - Analytics and reporting
+> - Cross-hospital data synchronization (rare use case)
+> - Audit logs and historical data
+> 
+> This separation of concerns between systems where we might want to use a NoSQL store
+> v. where we should be using SQL is a more nuanced approach rather than all or nothing.
+>
+> - REST's stateless, operation-based structure makes audit logging straightforward
+>   using standard HTTP logging tools. Each business action maps cleanly to an HTTP
+>   request, making it easy to track who did what when.
 
-**How to achieve Consistency at Scale:**
-- **Database partitioning** by hospital/region (each facility's data is largely independent)
-- **Read replicas** to handle the 10:1 read/write ratio efficiently
-- **Strategic caching** for calendar views and availability lookups
-- **Optimistic locking** for appointment conflict resolution
-- **Strong consistency within each hospital partition**
+### API
+The main two access patterns I identified were getting the listing of available time
+slots and then being able to create, update, or delete an appointment. So I think there
+are two main API endpoints to create.
 
-**Where Eventual Consistency is acceptable:**
-- Notifications and alerts
-- Analytics and reporting
-- Cross-hospital data synchronization (rare use case)
-- Audit logs and historical data
+- **Q:** Given that the primary consumer of this API will be internal, how would you
+  go about building it? \
+  **A:** I'd take a RESTful approach, since we're primarily considering state
+  transitions of appointments. The main operations are CRUD which fits well into the
+  REST paradigm.
 
-### Things I Discussed v. Things I Should Have Discussed
+- `GET` `/appointments/?doctor=<doctor1_pk>&doctor=<doctor2_pk>&start=<YYYY-MM-DD>&end=<YYYY-MM_DD>`
+  - Retrieve the available timeslots and scheduled appointments over the date range for
+    the specified doctors
+  - Use these two query params
 
-### Questions and Guidance
-Questions that were asked of me to help guide me towards a better solution
+- `POST` `/appointments`  (I accidentally called this "schedule", which is not RESTlike)
+  - `BODY`:
+  ```json
+  {
+    'doctor_pk': <doctor_pk>,
+    'patient_pk': <patient_pk>,
+    'appointment_time': datetime,
+  }
+  ```
+**My discussion:** There would need to be some logic that handles concurrency in case
+multiple users tried to assign to the same timeslot for the same doctor. The indexes at
+the database level should prevent duplicates from being created, but on the view itself
+we could make sure that we have a transaction that checks if the appointment already
+exists and if so automatically fail. This would ultimately leave it up to chance in the
+case of two people booking at the same time, who would get it. We could also do a
+temporary lock on the collection when someone clicks to start creating an appointment,
+but this would make the system very slow, which isn't acceptable. I'd need to think a
+bit more on this.
 
-### REST vs GraphQL Comparison
+- **Q:** What about a situation where someone edits the availability of a doctor while
+  another person is creating an appointment at a time that will no longer be valid? How
+  do you handle cases with stale data? \
+  **A:** I think this is likely a case where when a temporary lock on the appointment
+  collection would work well when a user is editing the doctor's availability. Again the
+  same issue would occur with performance but, we'd want to prioritize consistency. We
+  could also run an async process during off hours that checks the appointments for
+  validity and cleans up any that are no longer valid and alerts the doctor to
+  reschedule.
 
-This implementation provides both API approaches to demonstrate:
+> [!NOTE]\
+> I did not discuss this in enough detail, mostly because I don't have enough experience
+> with this topic. I don't think I actually knew what a lock is doing.
+> 
+> What does it mean to place a lock on a collection? This is overkill and would prevent
+> the system from working. Better approaches would be: \
+> - Within the collection itself the race condition is readily solved by optimistic
+> locking (assume that collisions are rare and detect after they happen). This is a bit
+> of a misnomer as there is no locking taking place, just the end goal of locking out
+> conflicts.
+> - Traditional (pessimistic - assume conflicts will occur, prevent them from happening)
+> locking instead actively marks the resource as inaccessible to anyone but the person
+> who initiated the lock. Instead of locking a whole collection, we can zoom down and
+> lock on a row using `select_for_update()` or an equivalent. 
+>   - This would be necessary to handle a multi-collection dependency as asked about in
+>     the interviewer question; however since the appointment objects don't exist yet
+>     we would actually need to lock the doctor object to prevent it from being edited,
+>     prioritizing the appointment, which doesn't make sense. This actually argues in
+>     favor of having the prepopulated table so that we can create these locks.
 
-**REST Advantages:**
-- Simpler implementation and debugging
-- Better HTTP caching semantics
-- Easier integration with existing healthcare systems
-- More predictable performance patterns
-- Industry standard for healthcare integrations
+- **Q:** Say you were going to expand this API to allow third-party access. Would you
+  still prefer RESTful or consider something like GraphQL?
+- **A:** I think given the simplicity of the model and the actions taken I would likely
+  stick with the RESTful approach. We would just need to handle auth header processing.
 
-**GraphQL Advantages:**
-- Single endpoint for complex calendar queries
-- Efficient data fetching (appointments + doctor + patient info in one request)
-- Better support for real-time subscriptions
-- Flexible client queries for different calendar views
-- Reduced over-fetching for mobile clients
+> [!NOTE]\
+> I was not familiar with GraphQL, but looking back on this now I realize that what they
+> were hinting at was a long-lived connection for the concurrence/real-time appointment
+> claiming, providing an endpoint for websocket or SSEs, or make sure the GraphQL
+> endpoint has support for a subscription. In this demo I'll implement both REST and
+> GraphQL as well as SSE and websocket endpoints.
+> 
+> ### REST vs GraphQL Comparison
+> **REST Advantages:**
+> - Simpler implementation and debugging
+> - Better HTTP caching semantics
+> - Easier integration with existing healthcare systems
+> - More predictable performance patterns
+> - Industry standard for healthcare integrations
+> 
+> **GraphQL Advantages:**
+> - Single endpoint for complex calendar queries
+> - Efficient data fetching (appointments + doctor + patient info in one request)
+> - Better support for real-time subscriptions
+> - Flexible client queries for different calendar views
+> - Reduced over-fetching for mobile clients
 
-## Architecture Decisions
-
-### Data Partitioning Strategy
-```
-Hospital A Partition    Hospital B Partition    Hospital C Partition
-├── Appointments       ├── Appointments        ├── Appointments
-├── Doctors            ├── Doctors             ├── Doctors
-├── Staff              ├── Staff               ├── Staff
-└── Patients          └── Patients            └── Patients
-```
-
-### Consistency Guarantees
-- **Strong consistency** within each hospital partition
-- **Eventual consistency** for cross-partition reporting
-- **ACID transactions** for appointment booking operations
-- **Optimistic concurrency control** to handle simultaneous bookings
-
-### Scalability Patterns
-- Horizontal partitioning by hospital
-- Read replicas for calendar views
-- Redis caching for frequently accessed availability data
-- Load balancing across partition replicas
+### Things I Should Have Talked About But Ran Out of Time
+- Testing
+- System health monitoring
+- Scaling, redundancies, fallbacks
+  - Data Partitioning Strategy:
+    ```
+    Hospital A Partition    Hospital B Partition    Hospital C Partition
+    ├── Appointments       ├── Appointments        ├── Appointments
+    ├── Doctors            ├── Doctors             ├── Doctors
+    ├── Staff              ├── Staff               ├── Staff
+    └── Patients          └── Patients            └── Patients
+    ```
+  - Consistency Guarantees
+    - **Strong consistency** within each hospital partition
+    - **Eventual consistency** for cross-partition reporting
+    - **ACID transactions** for appointment booking operations
+    - **Optimistic concurrency control** to handle simultaneous bookings
+  - Scalability Patterns
+    - Horizontal partitioning by hospital
+    - Read replicas for calendar views
+    - Redis caching for frequently accessed availability data
+    - Load balancing across partition replicas
 
 ## Technical Implementation
 
-- **Backend**: Django + DRF + Graphene GraphQL
-- **Database**: PostgreSQL with partitioning
+This demo implements both REST and GraphQL APIs for the same appointment scheduler to compare developer experience and API design patterns.
+
+### Tech Stack
+- **Backend**: FastAPI with dual API implementation
+  - **REST**: FastAPI native endpoints with Pydantic models
+  - **GraphQL**: Strawberry GraphQL for schema-first approach
+- **Database**: PostgreSQL with SQLAlchemy ORM
 - **Frontend**: Vue 3 + TypeScript with API switching capability
-- **Caching**: Redis for session and availability data
-- **Authentication**: JWT with role-based access control
+- **Containerization**: Docker Compose for easy setup and deployment
+- **Authentication**: JWT tokens for role-based access control
 
-## Key Learning Outcomes
+### Getting Started
+```bash
+# Clone and run
+git clone <repo-url>
+cd appointment-scheduler
+docker-compose up
 
-1. **Domain-driven consistency requirements**: Understanding when business rules demand strong consistency
-2. **Partitioning strategies**: How to scale while maintaining consistency where needed
-3. **API paradigm trade-offs**: Concrete comparison between REST and GraphQL approaches
-4. **Healthcare system constraints**: Reliability and trust requirements in medical software
+# Access the application
+Frontend: http://localhost:3000
+REST API: http://localhost:8000/docs
+GraphQL: http://localhost:8000/graphql
+```
 
-## Future Considerations
-
-- **Multi-region deployment** with cross-region eventual consistency
-- **Event sourcing** for complete audit trails
-- **FHIR integration** for healthcare interoperability
-- **Real-time conflict resolution** UI patterns
-
-### Things I Should Have Asked About
-> `TODO`
+### Project Structure
+```
+appointment-scheduler/
+├── docker-compose.yml
+├── backend/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── app/
+│       ├── main.py
+│       ├── models/
+│       ├── api/
+│       │   ├── rest/
+│       │   └── graphql/
+│       └── core/
+├── frontend/
+│   ├── Dockerfile
+│   └── src/
+└── README.md
+```
