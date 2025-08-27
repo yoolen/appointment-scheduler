@@ -235,7 +235,8 @@ the system through staff and doctors.
 Based on the relational nature of the data as well as the importance of data consistency
 I'd likely choose a relational store.
 
-> [!NOTE] Additional in depth discussion\
+> [!NOTE]\
+**Additional in depth discussion of database selection.**
 > #### CAP Theorem Decision: Consistency over Availability
 > 
 > **Why Consistency was chosen:**
@@ -284,14 +285,14 @@ are two main API endpoints to create.
   - Use these two query params
 
 - `POST` `/appointments`  (I accidentally called this "schedule", which is not RESTlike)
-  - `BODY`:
-  ```json
-  {
-    'doctor_pk': <doctor_pk>,
-    'patient_pk': <patient_pk>,
-    'appointment_time': datetime,
-  }
-  ```
+  - `BODY`
+    ```json
+    {
+        'doctor_pk': <doctor_pk>,
+        'patient_pk': <patient_pk>,
+        'appointment_time': datetime,
+    }
+    ```
 **My discussion:** There would need to be some logic that handles concurrency in case
 multiple users tried to assign to the same timeslot for the same doctor. The indexes at
 the database level should prevent duplicates from being created, but on the view itself
