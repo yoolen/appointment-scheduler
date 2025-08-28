@@ -6,6 +6,7 @@
 pylint:
 	@echo "🔧 Formatting Python code..."
 	docker compose exec backend black app/
+	docker compose exec backend pylint app/
 	docker compose exec backend isort app/
 	@echo "✅ Python linting completed!"
 
