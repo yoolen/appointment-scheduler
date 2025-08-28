@@ -2,7 +2,7 @@
 alembic
 fastapi
 passlib[bcrypt]
-psycopg2-binary
+psycopg[binary]
 pydantic
 pydantic-settings
 python-jose[cryptography]

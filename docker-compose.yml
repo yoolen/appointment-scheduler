@@ -39,7 +39,7 @@ services:
     restart: always                      # Restart if container crashes
     environment:
       # Database connection string using service name 'postgres' as hostname
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/appointment_scheduler
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/appointment_scheduler
       # Redis connection string using service name 'redis' as hostname
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: "http://localhost:3000"  # Allow frontend to access API

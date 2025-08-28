@@ -5,7 +5,7 @@ FROM python:3.13-slim
 WORKDIR /app
 
 # Install system dependencies needed for Python packages
-# gcc: C compiler needed for psycopg2-binary
+# gcc: C compiler (keeping for other packages that may need it)
 # Clean apt cache to reduce image size
 RUN apt-get update && apt-get install -y \
     gcc && rm -rf /var/lib/apt/lists/*
