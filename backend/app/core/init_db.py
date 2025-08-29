@@ -4,6 +4,7 @@ Creates all tables defined in models.
 """
 
 import random
+from typing import cast
 
 from faker import Faker
 from sqlalchemy.orm import sessionmaker
@@ -51,7 +52,9 @@ def populate_tables() -> None:
         ]
         session.bulk_save_objects(hospitals)
         session.commit()
-        hospital_ids = [hospital.id for hospital in session.query(Hospital).all()]
+        hospital_ids = [
+            cast(int, hospital.id) for hospital in session.query(Hospital).all()
+        ]
 
         # Create staff (doctors and other staff)
         staff_members = []

@@ -43,6 +43,8 @@ services:
       # Redis connection string using service name 'redis' as hostname
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: "http://localhost:3000"  # Allow frontend to access API
+      # Set pylint cache directory to writable location
+      PYLINTHOME: /tmp/pylint
     ports:
       - "8000:8000"                      # Map container port 8000 to host port 8000
     volumes:

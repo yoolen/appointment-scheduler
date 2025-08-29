@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Any, List
+from typing import Any, List, cast
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import (
@@ -14,12 +14,13 @@ from sqlalchemy import (
     Text,
     Time,
 )
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import String as SQLString
 from sqlalchemy.types import TypeDecorator
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class ZoneInfoType(TypeDecorator):  # pylint: disable=abstract-method
@@ -30,7 +31,7 @@ class ZoneInfoType(TypeDecorator):  # pylint: disable=abstract-method
     impl = SQLString
     cache_ok = True
 
-    def process_bind_param(self, value: ZoneInfo, dialect: Any) -> str | None:
+    def process_bind_param(self, value: ZoneInfo | None, dialect: Any) -> str | None:
         if value is not None:
             return str(value)
         return value
@@ -51,7 +52,7 @@ class Hospital(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     address = Column(Text, nullable=False)
-    timezone = Column(ZoneInfoType(50), nullable=False)
+    timezone: Mapped[ZoneInfo] = mapped_column(ZoneInfoType(50), nullable=False)
     open_time = Column(Time, nullable=False)
     close_time = Column(Time, nullable=False)
 
@@ -99,7 +100,7 @@ class Staff(Base):
     @classmethod
     def doctors(cls, session) -> List["Staff"]:
         """Return all staff members who are doctors."""
-        return session.query(cls).filter_by(is_doctor=True).all()
+        return cast(List["Staff"], session.query(cls).filter_by(is_doctor=True).all())
 
 
 class Patient(Base):
