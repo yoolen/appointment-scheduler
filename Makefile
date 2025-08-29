@@ -6,7 +6,7 @@ BACKEND_RUN = @docker compose up -d backend > /dev/null 2>&1; \
 	sleep 5; \
 	docker compose exec backend
 
-.PHONY: black bootstrap mypy pyfix pylint update_requirements
+.PHONY: black bootstrap isort mypy pyfix pylint update_requirements
 
 # Python code formatting with black
 black:
@@ -21,6 +21,12 @@ bootstrap:
 	$(MAKE) update_requirements
 	$(BACKEND_RUN) pip install -r requirements.txt
 	@echo "✅ Development environment ready!"
+
+# Sort imports with isort
+isort:
+	@echo "🔧 Sorting imports with isort..."
+	$(BACKEND_RUN) isort app/
+	@echo "✅ Imports sorted!"
 
 # Type checking with mypy
 mypy:
@@ -37,7 +43,7 @@ pylint:
 	@echo "🔧 Formatting Python code..."
 	$(MAKE) black
 	$(BACKEND_RUN) pylint app/
-	$(BACKEND_RUN) isort app/
+	$(MAKE) isort
 	@echo "✅ Python linting completed!"
 
 python:
