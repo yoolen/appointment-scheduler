@@ -1,22 +1,26 @@
 # Makefile for development tasks
 
 # Automatically ensure backend is running for exec commands
-BACKEND_RUN = @if ! docker compose ps backend | grep -q "running"; then \
-	echo "🔄 Backend service not running, starting it..."; \
-	docker compose up -d backend; \
-	echo "⏳ Waiting for backend service to be ready..."; \
-	sleep 10; \
-fi; docker compose exec backend
+BACKEND_RUN = @docker compose up -d backend > /dev/null 2>&1; \
+	echo "⏳ Ensuring backend is ready..."; \
+	sleep 5; \
+	docker compose exec backend
 
-.PHONY: pylint mypy pyfix bootstrap update_requirements
+.PHONY: black bootstrap mypy pyfix pylint update_requirements
 
-# Python linting - format code and sort imports
-pylint:
-	@echo "🔧 Formatting Python code..."
+# Python code formatting with black
+black:
+	@echo "🔧 Formatting Python code with black..."
 	$(BACKEND_RUN) black app/
-	$(BACKEND_RUN) pylint app/
-	$(BACKEND_RUN) isort app/
-	@echo "✅ Python linting completed!"
+	@echo "✅ Code formatted!"
+
+# Bootstrap development environment
+bootstrap:
+	@echo "🚀 Bootstrapping development environment..."
+	$(BACKEND_RUN) pip install pip-tools
+	$(MAKE) update_requirements
+	$(BACKEND_RUN) pip install -r requirements.txt
+	@echo "✅ Development environment ready!"
 
 # Type checking with mypy
 mypy:
@@ -28,13 +32,17 @@ mypy:
 pyfix: pylint mypy
 	@echo "✅ All Python fixes completed!"
 
-# Bootstrap development environment
-bootstrap:
-	@echo "🚀 Bootstrapping development environment..."
-	$(BACKEND_RUN) pip install pip-tools
-	$(MAKE) update_requirements
-	$(BACKEND_RUN) pip install -r requirements.txt
-	@echo "✅ Development environment ready!"
+# Python linting - format code and sort imports
+pylint:
+	@echo "🔧 Formatting Python code..."
+	$(MAKE) black
+	$(BACKEND_RUN) pylint app/
+	$(BACKEND_RUN) isort app/
+	@echo "✅ Python linting completed!"
+
+python:
+	@echo "🐍 Running Python shell..."
+	$(BACKEND_RUN) python
 
 # Compile requirements files using pip-tools
 update_requirements:
