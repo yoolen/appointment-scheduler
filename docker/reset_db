@@ -1,0 +1,40 @@
+#!/bin/bash -e
+
+DOCKER_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# we're using docker compose so make sure we can reference docker-compose.yml
+cd "$(dirname "$DOCKER_DIR")"
+
+echo "⚠️  WARNING: This will completely reset the appointment scheduler database!"
+echo "   All existing data will be permanently lost."
+echo ""
+read -p "Are you sure you want to continue? (y/N): " -n 1 -r
+echo ""
+
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "❌ Database reset cancelled."
+    exit 0
+fi
+
+echo "🔥 Resetting appointment scheduler database..."
+
+# Ensure postgres is running
+echo "⏳ Starting postgres..."
+docker compose up -d postgres
+
+# Wait for database to be ready
+echo "⏳ Waiting for database to be ready..."
+until docker compose exec postgres pg_isready -U postgres > /dev/null 2>&1; do
+    echo "  Database not ready, waiting..."
+    sleep 2
+done
+
+# Drop and recreate schema
+echo "🗑️  Dropping existing database schema..."
+docker compose exec postgres psql -U postgres -d appointment_scheduler -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+# Run bootstrap to recreate everything
+echo "🚀 Running bootstrap to recreate database..."
+"$DOCKER_DIR/bootstrap_db"
+
+echo "✅ Database reset completed successfully!"

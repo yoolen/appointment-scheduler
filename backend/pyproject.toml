@@ -11,7 +11,8 @@ disable = [
     "missing-function-docstring",
     "missing-module-docstring",
     "too-few-public-methods",
-    "too-many-ancestors"
+    "too-many-ancestors",
+    "wrong-import-order",
 ]
 
 [tool.black]

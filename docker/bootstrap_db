@@ -1,0 +1,34 @@
+#!/bin/bash -e
+
+DOCKER_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# we're using docker compose so make sure we can reference docker-compose.yml
+cd "$(dirname "$DOCKER_DIR")"
+
+echo "🚀 Bootstrapping appointment scheduler database..."
+
+# Ensure services are running
+echo "⏳ Starting services..."
+docker compose up -d postgres backend
+
+# Wait for database to be ready
+echo "⏳ Waiting for database to be ready..."
+until docker compose exec postgres pg_isready -U postgres > /dev/null 2>&1; do
+    echo "  Database not ready, waiting..."
+    sleep 2
+done
+
+# Wait for backend to be ready (similar to Makefile BACKEND_RUN)
+echo "⏳ Ensuring backend is ready..."
+sleep 5
+
+# Initialize database tables and populate with data
+echo "🔧 Running database initialization script..."
+docker compose exec --user 1000:1000 backend python -m app.core.init_db
+
+echo "✅ Database bootstrap completed successfully!"
+echo ""
+echo "You can now access:"
+echo "  - REST API docs: http://localhost:8000/docs"
+echo "  - GraphQL playground: http://localhost:8000/graphql"
+echo "  - Frontend: http://localhost:3000"

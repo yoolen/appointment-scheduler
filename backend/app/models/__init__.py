@@ -2,6 +2,6 @@
 Database models package.
 """
 
-from .models import Appointment, Base, Hospital, Patient, Staff
+from .models import Appointment, Base, Doctor, Hospital, Patient, Staff, User
 
-__all__ = ["Appointment", "Base", "Hospital", "Patient", "Staff"]
+__all__ = ["Appointment", "Base", "Doctor", "Hospital", "Patient", "Staff", "User"]
