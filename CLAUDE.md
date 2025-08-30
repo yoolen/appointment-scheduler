@@ -51,12 +51,29 @@ appointment-scheduler/
 
 ## Core Data Models
 
-Based on system design analysis in README.md:
+**Person-Role Based Architecture:**
 
-- **Hospital**: Contains timezone, operating hours, and location data
-- **Doctor**: Linked to single hospital, has availability stored as JSONB
-- **Patient**: Basic patient information
-- **Appointment**: Links doctor, patient, and time slot with concurrency controls
+**Core Entities:**
+- **Person**: Shared personal data (name, contact info) for all individuals
+- **User**: Authentication and authorization for system access
+- **Hospital**: Facility information with timezone and operating hours
+
+**Role Entities:**
+- **Doctor**: Medical professionals with specializations, licenses
+- **Staff**: Administrative and support personnel with departments, titles
+- **Patient**: Individuals receiving care with medical records, insurance
+
+**Junction Tables:**
+- **PersonRole**: Links persons to multiple roles (doctor + staff, etc.)
+- **UserPerson**: Links authenticated users to person entities
+- **Appointment**: Links doctors, patients, and time slots
+
+**Benefits of This Architecture:**
+- Multiple roles per person (doctor who handles admin duties)
+- Clean separation of authentication from personal data
+- Natural database constraints (only users can create appointments)
+- Better security with role-based permissions
+- Eliminates awkward boolean flags and constraint issues
 
 ## Key Design Decisions
 

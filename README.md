@@ -433,7 +433,8 @@ bit more on this.
 
 ## Technical Implementation
 
-This demo implements both REST and GraphQL APIs for the same appointment scheduler to compare developer experience and API design patterns.
+This demo implements both REST and GraphQL APIs for the same appointment scheduler to
+compare developer experience and API design patterns.
 
 ### Tech Stack
 - **Backend**: FastAPI with dual API implementation
@@ -446,9 +447,17 @@ This demo implements both REST and GraphQL APIs for the same appointment schedul
 
 ### Getting Started
 ```bash
-# Clone and run
+# Clone and setup
 git clone <repo-url>
 cd appointment-scheduler
+
+# Initialize database with sample data
+./docker/bootstrap
+
+# Or reset database (with confirmation prompt)
+./docker/reset_db
+
+# Start services manually (if not using bootstrap)
 docker-compose up
 
 # Access the application
@@ -456,6 +465,20 @@ Frontend: http://localhost:3000
 REST API: http://localhost:8000/docs
 GraphQL: http://localhost:8000/graphql
 ```
+
+### Database Management
+The `docker/` directory contains utility scripts for database operations:
+
+- **`./docker/bootstrap_db`** - Initialize database with sample data (hospitals,
+  doctors, staff, patients, users)
+- **`./docker/reset_db`** - Reset database with safety confirmation prompt
+
+**Sample data includes:**
+- 10 hospitals with realistic timezones and hours
+- 100 staff members (10 per hospital)
+- 200 doctors (20 per hospital) 
+- 200 patients
+- Demo user accounts for authentication testing
 
 ### Docker Architecture
 
@@ -501,5 +524,67 @@ appointment-scheduler/
 │   ├── Dockerfile           # Node.js Vue container  
 │   ├── package.json         # npm dependencies
 │   └── src/
+├── docker/                  # Utility scripts
+│   ├── bootstrap            # Database initialization
+│   └── reset_db            # Database reset with confirmation
 └── README.md
 ```
+
+## Implementation Learnings
+
+### Database Schema Evolution
+
+During implementation, several design improvements were discovered that weren't
+addressed in the original system design:
+
+#### Normalized Person-Role Architecture
+
+**Problem Identified:** The original design used a simple `Staff` model with an
+`is_doctor` boolean field, which created several issues:
+- Awkward database constraints (PostgreSQL doesn't support subqueries in CHECK
+  constraints)
+- Difficulty modeling staff members who serve multiple roles
+- Unclear separation between authentication and person data
+- Poor normalization and scalability
+
+**Improved Design:** Implement a proper normalized schema with role-based relationships:
+
+**Core Tables:**
+- **persons** - Shared personal data (name, contact information, etc.)
+- **users** - Authentication and authorization (username, password, permissions)
+
+**Role Tables:**
+- **doctors** - Doctor-specific data (specialization, license numbers, certifications)
+- **staff** - Staff-specific data (department, job title, employment details)
+- **patients** - Patient-specific data (medical records, insurance information)
+
+**Junction Tables:**
+- **person_roles** - Links persons to their roles (enables multiple roles per person)
+- **user_person** - Links authenticated users to person entities
+
+**Key Benefits:**
+1. **Multiple Role Support**: A person can be both a doctor AND administrative staff
+2. **Clean Authentication**: Separation of login credentials from personal data
+3. **Natural Constraints**: Only users (doctors/staff) can create appointments, not
+   patients
+4. **Flexible Queries**: Easy to query "all doctors" or "all staff" without boolean
+   conditions
+5. **Better Security**: Role-based permissions map naturally to database relationships
+6. **Future-Proof**: Easy to add new roles (nurses, administrators, etc.) without schema
+   changes
+
+**Example Relationships:**
+```sql
+-- Dr. Smith who also handles administrative duties
+persons: {id: 1, name: "Dr. Smith", email: "smith@hospital.com"}
+users: {id: 1, username: "dsmith", person_id: 1}
+person_roles: [
+  {person_id: 1, role_type: "doctor", role_id: 101},
+  {person_id: 1, role_type: "staff", role_id: 201}
+]
+doctors: {id: 101, person_id: 1, specialization: "Cardiology", license: "MD123"}
+staff: {id: 201, person_id: 1, department: "Administration", title: "Department Head"}
+```
+
+This design eliminates the constraint issues while providing much better flexibility and
+maintainability for healthcare systems where staff often wear multiple hats.

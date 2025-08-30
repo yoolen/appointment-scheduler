@@ -1,26 +1,37 @@
-from datetime import UTC, datetime
-from typing import Any, List, cast
+from __future__ import annotations
+
+from datetime import UTC, datetime, time
+from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import (
-    Boolean,
-    CheckConstraint,
-    Column,
-    DateTime,
-    ForeignKey,
-    Index,
-    Integer,
-    String,
-    Text,
-    Time,
-)
+from sqlalchemy import ForeignKey, Index, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import String as SQLString
 from sqlalchemy.types import TypeDecorator
+from typing_extensions import Annotated
+
+int_pk = Annotated[int, mapped_column(primary_key=True, index=True)]
+person_fk = Annotated[int, mapped_column(ForeignKey("people.id"))]
 
 
 class Base(DeclarativeBase):
-    pass
+    """Base class for all ORM models."""
+
+
+class Person(Base):
+    """
+    A base class containing contact info and other common fields.
+    """
+
+    __tablename__ = "people"
+
+    id: Mapped[int_pk]
+    name: Mapped[str]
+    phone: Mapped[Optional[str]] = mapped_column(String(20))
+    email: Mapped[Optional[str]] = mapped_column(unique=True)
+
+    def __repr__(self) -> str:
+        return f"<Person id={self.id} name={self.name}>"
 
 
 class ZoneInfoType(TypeDecorator):  # pylint: disable=abstract-method
@@ -32,92 +43,10 @@ class ZoneInfoType(TypeDecorator):  # pylint: disable=abstract-method
     cache_ok = True
 
     def process_bind_param(self, value: ZoneInfo | None, dialect: Any) -> str | None:
-        if value is not None:
-            return str(value)
-        return value
+        return str(value) if value is not None else None
 
     def process_result_value(self, value, dialect: Any) -> ZoneInfo | None:
-        if value is not None:
-            return ZoneInfo(value)
-        return value
-
-
-class Hospital(Base):
-    """
-    The location a doctor works out of.
-    """
-
-    __tablename__ = "hospitals"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
-    address = Column(Text, nullable=False)
-    timezone: Mapped[ZoneInfo] = mapped_column(ZoneInfoType(50), nullable=False)
-    open_time = Column(Time, nullable=False)
-    close_time = Column(Time, nullable=False)
-
-    staff = relationship("Staff", back_populates="hospital")
-
-    def __repr__(self) -> str:
-        return f"<Hospital id={self.id} name={self.name}>"
-
-    @property
-    def doctors(self) -> List["Staff"]:
-        """Return all staff members who are doctors."""
-        return [member for member in self.staff if member.is_doctor]
-
-
-class Staff(Base):
-    """
-    Medical staff at a hospital, including doctors and other personnel.
-    """
-
-    __tablename__ = "staff"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
-    hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=False)
-    is_doctor = Column(Boolean, default=False)
-
-    # Relationships
-    hospital = relationship("Hospital", back_populates="staff")
-    appointments = relationship("Appointment", back_populates="doctor")
-
-    def __repr__(self) -> str:
-        role = "Doctor" if self.is_doctor else "Staff"
-        return f"<{role} id={self.id} name={self.name} hospital_id={self.hospital_id}>"
-
-    @classmethod
-    def create_doctor(cls, name: str, hospital_id: int, **kwargs: Any) -> "Staff":
-        """Create and return a new doctor."""
-        return Staff(name=name, hospital_id=hospital_id, is_doctor=True, **kwargs)
-
-    @classmethod
-    def create_staff(cls, name: str, hospital_id: int, **kwargs: Any) -> "Staff":
-        """Create and return a new staff member."""
-        return Staff(name=name, hospital_id=hospital_id, is_doctor=False, **kwargs)
-
-    @classmethod
-    def doctors(cls, session) -> List["Staff"]:
-        """Return all staff members who are doctors."""
-        return cast(List["Staff"], session.query(cls).filter_by(is_doctor=True).all())
-
-
-class Patient(Base):
-    """
-    A patient that requires and appointment with a doctor.
-    """
-
-    __tablename__ = "patients"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
-
-    # Relationships
-    appointments = relationship("Appointment", back_populates="patient")
-
-    def __repr__(self) -> str:
-        return f"<Patient id={self.id} name={self.name}>"
+        return ZoneInfo(value) if value is not None else None
 
 
 class Appointment(Base):
@@ -127,28 +56,28 @@ class Appointment(Base):
 
     __tablename__ = "appointments"
 
-    id = Column(Integer, primary_key=True, index=True)
-    doctor_id = Column(Integer, ForeignKey("staff.id"), nullable=False)
-    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
-    appointment_time = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
-    updated_at = Column(
-        DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    id: Mapped[int_pk]
+    doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"))
+    patient_id: Mapped[Optional[int]] = mapped_column(ForeignKey("patients.id"))
+    appointment_time: Mapped[datetime]
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
     )
+    created_by: Mapped[person_fk]
 
-    # Relationships
-    doctor = relationship("Staff", back_populates="appointments")
-    patient = relationship("Patient", back_populates="appointments")
+    creator: Mapped["Person"] = relationship()
+    doctor: Mapped["Doctor"] = relationship(
+        back_populates="appointments", foreign_keys=[doctor_id]
+    )
+    patient: Mapped["Patient"] = relationship(
+        back_populates="appointments", foreign_keys=[patient_id]
+    )
 
     __table_args__ = (
         # Prevent double bookings - unique constraint on doctor + time
         Index(
             "idx_unique_doctor_timeslot", "doctor_id", "appointment_time", unique=True
-        ),
-        # Ensure only doctors can be assigned to appointments
-        CheckConstraint(
-            "doctor_id IN (SELECT id FROM staff WHERE is_doctor = true)",
-            name="check_doctor_is_actually_doctor",
         ),
     )
 
@@ -156,4 +85,101 @@ class Appointment(Base):
         return (
             f"<Appointment id={self.id} doctor_id={self.doctor_id} "
             f"patient_id={self.patient_id} time={self.appointment_time.isoformat()}>"
+        )
+
+
+class Doctor(Person):
+    """
+    A doctor who can have appointments with patients.
+    """
+
+    __tablename__ = "doctors"
+
+    id: Mapped[person_fk] = mapped_column(primary_key=True)
+    hospital_id: Mapped[int] = mapped_column(ForeignKey("hospitals.id"))
+    specialty: Mapped[Optional[str]]  # Consider Enum for specialties
+
+    appointments: Mapped[list["Appointment"]] = relationship(back_populates="doctor")
+    # Currently a doctor works only at one hospital
+    hospital: Mapped["Hospital"] = relationship(back_populates="doctors")
+
+    def __repr__(self) -> str:
+        return f"<Doctor id={self.id} name={self.name}>"
+
+
+class Hospital(Base):
+    """
+    The location doctors and staff work out of; where a patient goes for an appointment.
+    """
+
+    __tablename__ = "hospitals"
+
+    id: Mapped[int_pk]
+    name: Mapped[str]
+    address: Mapped[str]
+    timezone: Mapped[ZoneInfo] = mapped_column(ZoneInfoType(50))
+    open_time: Mapped[time]
+    close_time: Mapped[time]
+
+    doctors: Mapped[list["Doctor"]] = relationship(back_populates="hospital")
+    staff: Mapped[list["Staff"]] = relationship(back_populates="hospital")
+
+    def __repr__(self) -> str:
+        return f"<Hospital id={self.id} name={self.name}>"
+
+
+class Patient(Person):
+    """
+    A patient that requires and appointment with a doctor.
+    """
+
+    __tablename__ = "patients"
+
+    id: Mapped[person_fk] = mapped_column(primary_key=True)
+
+    appointments: Mapped[list["Appointment"]] = relationship(back_populates="patient")
+
+    def __repr__(self) -> str:
+        return f"<Patient id={self.id} name={self.name}>"
+
+
+class Staff(Person):
+    """
+    Medical staff at a hospital, including doctors and other personnel.
+    """
+
+    __tablename__ = "staff"
+
+    id: Mapped[person_fk] = mapped_column(primary_key=True)
+    hospital_id: Mapped[int] = mapped_column(ForeignKey("hospitals.id"))
+
+    # Currently a staff member works only at one hospital32
+    hospital = relationship("Hospital", back_populates="staff")
+
+    def __repr__(self) -> str:
+        return f"<Staff id={self.id} name={self.name} hospital_id={self.hospital_id}>"
+
+
+class User(Base):
+    """
+    A user of the system, for authentication and authorization purposes.
+
+    In a production system, authentication would be through some enterprise
+    identity provider (e.g., OAuth, SAML, etc.) and we would not store passwords.
+    """
+
+    __tablename__ = "users"
+
+    id: Mapped[int_pk]
+    username: Mapped[str] = mapped_column(unique=True)
+    hashed_password: Mapped[str]
+    is_active: Mapped[bool] = mapped_column(default=True)
+    is_superuser: Mapped[bool] = mapped_column(default=False)
+    person_id: Mapped[Optional[int]] = mapped_column(ForeignKey("people.id"))
+
+    person: Mapped[Optional["Person"]] = relationship()
+
+    def __repr__(self) -> str:
+        return (
+            f"<User id={self.id} username={self.username} is_active={self.is_active}>"
         )
