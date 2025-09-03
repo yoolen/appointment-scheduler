@@ -27,7 +27,7 @@ click==8.2.1
     #   black
     #   pip-tools
     #   uvicorn
-cryptography==45.0.6
+cryptography==45.0.7
     # via python-jose
 dill==0.4.0
     # via pylint
@@ -51,6 +51,8 @@ httptools==0.6.4
     # via uvicorn
 idna==3.10
     # via anyio
+iniconfig==2.1.0
+    # via pytest
 isort==6.0.1
     # via
     #   -r requirements-dev.in
@@ -75,6 +77,7 @@ packaging==25.0
     # via
     #   black
     #   build
+    #   pytest
     #   strawberry-graphql
 passlib[bcrypt]==1.7.4
     # via -r requirements.in
@@ -88,6 +91,8 @@ platformdirs==4.4.0
     # via
     #   black
     #   pylint
+pluggy==1.6.0
+    # via pytest
 psycopg[binary]==3.2.9
     # via -r requirements.in
 psycopg-binary==3.2.9
@@ -111,12 +116,20 @@ pydantic-settings==2.10.1
     # via -r requirements.in
 pyflakes==3.4.0
     # via flake8
+pygments==2.19.2
+    # via pytest
 pylint==3.3.8
     # via -r requirements-dev.in
 pyproject-hooks==1.2.0
     # via
     #   build
     #   pip-tools
+pytest==8.4.1
+    # via
+    #   -r requirements-dev.in
+    #   pytest-asyncio
+pytest-asyncio==1.1.0
+    # via -r requirements-dev.in
 python-dateutil==2.9.0.post0
     # via strawberry-graphql
 python-dotenv==1.1.1

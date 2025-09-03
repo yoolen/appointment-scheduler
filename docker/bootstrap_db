@@ -9,7 +9,7 @@ echo "🚀 Bootstrapping appointment scheduler database..."
 
 # Ensure services are running
 echo "⏳ Starting services..."
-docker compose up -d postgres backend
+docker compose up -d --no-deps postgres backend
 
 # Wait for database to be ready
 echo "⏳ Waiting for database to be ready..."
