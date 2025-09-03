@@ -1,4 +1,5 @@
 name: Mypy
+run-name: Mypy
 
 on: [push]
 

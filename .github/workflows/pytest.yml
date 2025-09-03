@@ -1,5 +1,5 @@
 name: Pytest
-
+run-name: Pytest
 on: [push]
 
 jobs:
@@ -24,4 +24,4 @@ jobs:
     - name: Run tests with pytest
       working-directory: ./backend
       run: |
-        pytest --cov=app --cov-fail-under=0 --allow-empty-collection
+        pytest --cov=app --cov-fail-under=0

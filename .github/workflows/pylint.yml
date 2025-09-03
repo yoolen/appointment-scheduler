@@ -1,4 +1,5 @@
 name: Pylint
+run-name: Pylint
 
 on: [push]
 
