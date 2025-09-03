@@ -1,17 +1,15 @@
 # Core dependencies
 alembic
+bcrypt
 fastapi
-passlib[bcrypt]
 psycopg[binary]
 pydantic
 pydantic-settings
+pyjwt
 python-multipart
 sqlalchemy
 strawberry-graphql[fastapi]
 uvicorn[standard]
-
-# Data generation
-faker
 
 # Cache/Sessions
 redis
