@@ -25,6 +25,8 @@ click==8.2.1
     #   black
     #   pip-tools
     #   uvicorn
+coverage[toml]==7.10.6
+    # via pytest-cov
 dill==0.4.0
     # via pylint
 faker==37.6.0
@@ -86,7 +88,9 @@ platformdirs==4.4.0
     #   black
     #   pylint
 pluggy==1.6.0
-    # via pytest
+    # via
+    #   pytest
+    #   pytest-cov
 psycopg[binary]==3.2.9
     # via -r requirements.in
 psycopg-binary==3.2.9
@@ -116,7 +120,10 @@ pytest==8.4.1
     # via
     #   -r requirements-dev.in
     #   pytest-asyncio
+    #   pytest-cov
 pytest-asyncio==1.1.0
+    # via -r requirements-dev.in
+pytest-cov==6.2.1
     # via -r requirements-dev.in
 python-dateutil==2.9.0.post0
     # via strawberry-graphql
