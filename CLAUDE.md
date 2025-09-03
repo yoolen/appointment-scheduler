@@ -40,11 +40,26 @@ appointment-scheduler/
 ├── docker-compose.yml
 ├── backend/app/
 │   ├── main.py              # FastAPI app with both REST/GraphQL
-│   ├── models/              # SQLAlchemy models
-│   ├── api/
+│   ├── models/              # SQLAlchemy database models
+│   ├── api/                 # API layer (REST + GraphQL)
 │   │   ├── rest/           # FastAPI REST endpoints
+│   │   │   ├── auth.py         # Authentication endpoints
+│   │   │   ├── users.py        # User management (admin only)
+│   │   │   ├── hospitals.py    # Hospital data endpoints
+│   │   │   ├── appointments.py # Appointment CRUD
+│   │   │   └── doctors.py      # Doctor availability management
 │   │   └── graphql/        # Strawberry GraphQL schema
-│   └── core/               # Database, auth, config
+│   │       ├── auth.py         # Auth mutations/queries
+│   │       ├── users.py        # User management schema
+│   │       ├── hospitals.py    # Hospital data schema
+│   │       ├── appointments.py # Appointment schema
+│   │       └── doctors.py      # Doctor schema
+│   └── core/               # Business logic and utilities
+│       ├── auth.py             # JWT creation, password hashing
+│       ├── security.py         # FastAPI auth dependencies
+│       ├── permissions.py      # Role-based access control
+│       ├── database.py         # Database connection
+│       └── config.py           # Application configuration
 ├── frontend/src/           # Vue 3 + TypeScript
 └── README.md              # System design analysis
 ```
@@ -85,6 +100,33 @@ appointment-scheduler/
 
 **Timezone Handling**: Naive times + timezone stored separately to handle business rules and DST transitions correctly.
 
+## Authentication Architecture
+
+**JWT with httpOnly Cookies:**
+- **Security**: Protects against XSS attacks (JavaScript cannot access httpOnly cookies)
+- **Token Strategy**: Short-lived access tokens (15min) + long-lived refresh tokens (30 days)
+- **Role-Based Access**: JWT payload contains user roles and hospital affiliations
+
+**Core Authentication Components:**
+
+**`app/core/auth.py`** - Pure Business Logic:
+- `authenticate_user()` - Validate credentials against database
+- `create_jwt_token()` - Generate access tokens with user context
+- `create_refresh_token()` - Generate long-lived refresh tokens
+- `verify_jwt_token()` - Decode and validate token signatures
+- `hash_password()` / `verify_password()` - Secure password handling
+
+**`app/core/security.py`** - FastAPI Dependencies:
+- `get_current_user()` - Extract user from httpOnly cookie
+- `require_admin()` - Admin-only endpoint protection
+- `require_doctor_or_staff()` - Role-based access control
+- `get_hospital_context()` - Hospital-scoped data access
+
+**`app/core/permissions.py`** - Authorization Logic:
+- Role validation and hospital affiliation checks
+- Data filtering based on user permissions
+- Appointment access control (doctors see only their appointments)
+
 ## API Comparison Focus
 
 This implementation demonstrates:
@@ -92,3 +134,4 @@ This implementation demonstrates:
 - **GraphQL**: Flexible queries for complex calendar data fetching
 - **Error Handling**: How each paradigm handles validation and conflicts
 - **Developer Experience**: Code complexity and maintainability differences
+- **Authentication**: Consistent security model across both API paradigms
