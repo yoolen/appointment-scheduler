@@ -4,7 +4,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base, int_pk, person_fk
+from .base import Base, person_fk, uuid_pk
 from .people import Person
 
 
@@ -18,7 +18,7 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id: Mapped[int_pk]
+    id: Mapped[uuid_pk]
     username: Mapped[str] = mapped_column(unique=True)
     hashed_password: Mapped[str]
     is_active: Mapped[bool] = mapped_column(default=True)
