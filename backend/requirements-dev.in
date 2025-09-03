@@ -5,3 +5,6 @@ isort
 mypy
 pip-tools
 pylint
+pytest
+pytest-asyncio
+pytest-cov

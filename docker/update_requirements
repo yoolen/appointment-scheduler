@@ -1,0 +1,22 @@
+#!/bin/bash -e
+
+DOCKER_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# we're using docker compose so make sure we can reference docker-compose.yml
+cd "$(dirname "$DOCKER_DIR")"
+
+echo "🔄 Updating Python dependencies in the backend service..."
+
+# Ensure backend service is running
+echo "⏳ Starting backend service..."
+docker compose up -d --no-deps backend
+
+# Wait for backend to be ready
+echo "⏳ Waiting for backend to be ready..."
+sleep 5
+
+# Update dependencies
+echo "🔧 Installing/Updating dependencies from requirements.txt..."
+docker compose build --no-cache backend
+
+echo "✅ Python dependencies updated successfully!"

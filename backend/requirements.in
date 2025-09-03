@@ -5,7 +5,6 @@ passlib[bcrypt]
 psycopg[binary]
 pydantic
 pydantic-settings
-python-jose[cryptography]
 python-multipart
 sqlalchemy
 strawberry-graphql[fastapi]

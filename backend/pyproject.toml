@@ -22,3 +22,7 @@ line-length = 88
 python_version = "3.13"
 warn_return_any = true
 warn_unused_configs = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=app --cov-fail-under=0"
+cache_dir = ".cache/pytest"

@@ -46,6 +46,12 @@ pylint:
 	$(MAKE) isort
 	@echo "✅ Python linting completed!"
 
+# Pytest
+pytest:
+	@echo "🧪 Running tests with pytest..."
+	$(BACKEND_RUN) pytest
+	@echo "✅ Tests completed!"
+
 python:
 	@echo "🐍 Running Python shell..."
 	$(BACKEND_RUN) python
