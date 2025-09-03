@@ -20,10 +20,11 @@ class Settings(BaseSettings):
     # API settings
     cors_origins: str = "http://localhost:3000"
 
-    # JWT settings (for future auth implementation)
+    # JWT settings
     secret_key: str = "your-secret-key-change-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 14
 
     class Config:
         # Look for .env file to load environment variables
