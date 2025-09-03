@@ -5,6 +5,7 @@ fastapi
 psycopg[binary]
 pydantic
 pydantic-settings
+pyjwt
 python-multipart
 sqlalchemy
 strawberry-graphql[fastapi]
