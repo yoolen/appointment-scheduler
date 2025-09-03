@@ -1,7 +1,6 @@
 name: Mypy
-run-name: Mypy
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
