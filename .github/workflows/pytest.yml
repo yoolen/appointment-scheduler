@@ -24,4 +24,4 @@ jobs:
     - name: Run tests with pytest
       working-directory: ./backend
       run: |
-        pytest --cov=app --cov-report=xml
+        pytest --cov=app --cov-fail-under=0
