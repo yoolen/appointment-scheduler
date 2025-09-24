@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from ..schemas.auth import LoginInfo
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
+from sqlalchemy.orm import Session
+
 from ...core.auth import (
     authenticate_user,
     create_jwt_token,
@@ -10,9 +12,7 @@ from ...core.auth import (
 )
 from ...core.database import get_db
 from ...models.users import User
-
-from fastapi import APIRouter, Depends, Response, HTTPException, Cookie
-from sqlalchemy.orm import Session
+from ..schemas.auth import LoginInfo
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
@@ -26,7 +26,7 @@ def login(
         refresh_token = create_refresh_token(user.id, user.email)
 
         # Store refresh token in database
-        user.refresh_token = refresh_token
+        user.refresh_token_hash = refresh_token
         db.commit()
 
         # Set httpOnly cookies

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import bcrypt
@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.users import User
-
 
 """
 Authentication and authorization utilities.
@@ -72,7 +71,7 @@ def verify_jwt_token(token: str) -> dict | None:
 def verify_refresh_token(db: Session, token: str) -> dict | None:
     """Verify the provided refresh token."""
     try:
-        payload = jwt.decode(
+        payload: dict = jwt.decode(
             token, settings.secret_key, algorithms=[settings.algorithm]
         )
         # Check if token exists in database and is not revoked

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-
 from typing import Optional
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
@@ -34,7 +33,7 @@ class User(Base):
         return f"<User id={self.id} email={self.email} is_active={self.is_active}>"
 
     @validates("email")
-    def validate_email(self, key, address):
+    def validate_email(self, address):
         if not re.match(r"^[^@]+@[^@]+\.[^@]+$", address):
             raise ValueError("Invalid email address")
         return address.lower()
