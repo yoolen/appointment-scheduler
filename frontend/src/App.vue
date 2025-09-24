@@ -1,54 +1,11 @@
 <template>
   <div id="app">
-    <header>
-      <h1>Appointment Scheduler</h1>
-      <p>REST vs GraphQL Comparison Demo</p>
-    </header>
-    
-    <main>
-      <div class="api-status">
-        <h2>API Status</h2>
-        <div class="status-item">
-          <span>Backend API:</span>
-          <span :class="{ 'status-ok': backendStatus, 'status-error': !backendStatus }">
-            {{ backendStatus ? 'Connected' : 'Disconnected' }}
-          </span>
-        </div>
-      </div>
-      
-      <div class="coming-soon">
-        <p>🚧 Implementation coming soon...</p>
-        <ul>
-          <li>✅ Docker setup complete</li>
-          <li>⏳ Database models</li>
-          <li>⏳ REST API endpoints</li>
-          <li>⏳ GraphQL schema</li>
-          <li>⏳ Frontend calendar</li>
-        </ul>
-      </div>
-    </main>
+    <router-view />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-
-const backendStatus = ref(false)
-
-const checkBackendStatus = async () => {
-  try {
-    const response = await fetch('http://localhost:8000/health')
-    backendStatus.value = response.ok
-  } catch (error) {
-    backendStatus.value = false
-  }
-}
-
-onMounted(() => {
-  checkBackendStatus()
-  // Check every 5 seconds
-  setInterval(checkBackendStatus, 5000)
-})
+// Router outlet only
 </script>
 
 <style>
