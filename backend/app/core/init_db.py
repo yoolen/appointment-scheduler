@@ -95,33 +95,33 @@ def populate_tables() -> None:
         demo_users = [
             # Admin user (you)
             User(
-                username="admin",
+                email="admin@test.com",
                 hashed_password="$2b$12$iWuf7ugkm/PWdvTsJKcPPOh0yL1.LEonWxdhM5GvI0fo0S0FuHqre",  # salted and hashed "password"  # pylint: disable=line-too-long
                 person_id=None,
                 is_superuser=True,
             ),
             # A few doctors who can log in
             User(
-                username="doctor1",
+                email="doctor1@test.com",
                 hashed_password="$2b$12$qlbB/ZtKyNlXLKMl8KX8v.v/N1bHF8ZxMPkwy7nElEkxviYVjaW3G",  # salted and hashed "docpass"  # pylint: disable=line-too-long
                 person_id=some_doctors[0].id,
                 is_superuser=False,
             ),
             User(
-                username="doctor2",
+                email="doctor2@test.com",
                 hashed_password="$2b$12$Xdi38fXZfsbNc50qMxNxfu46SC4nIAD8E77WjWA8Qeb7ad53aObbC",  # salted and hashed "docpass"  # pylint: disable=line-too-long
                 person_id=some_doctors[1].id,
                 is_superuser=False,
             ),
             # A few staff members who can log in
             User(
-                username="staff1",
+                email="staff1@test.com",
                 hashed_password="$2b$12$Hmg3w7fkX6rfK0RUbxdzx.AjzztP7ed8UJCu5rfBkkBMyfFqsq/W6",  # salted and hashed "staffpass"  # pylint: disable=line-too-long
                 person_id=some_staff[0].id,
                 is_superuser=False,
             ),
             User(
-                username="staff2",
+                email="staff2@test.com",
                 hashed_password="$2b$12$bn8fZQ5Eww8emE.MvOY9iu4uEKvA/0Dkgn23n.Yd7N88JizdoB6X2",  # salted and hashed "staffpass"  # pylint: disable=line-too-long
                 person_id=some_staff[1].id,
                 is_superuser=False,

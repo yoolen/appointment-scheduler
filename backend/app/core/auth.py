@@ -11,30 +11,49 @@ from app.core.config import settings
 from app.models.users import User
 
 
-def authenticate_user(db: Session, username: str, password: str) -> None | User:
+"""
+Authentication and authorization utilities.
+
+  WORKFLOW:
+  1. Registration/Login: Store salted and hashed passwords using bcrypt
+  2. Successful login returns two tokens:
+     - Short-lived JWT access token (15min) for API access
+     - Long-lived refresh token (30 days) stored as httpOnly cookie
+  3. API Access: Access token sent via Authorization: Bearer <token> header
+  4. Token Refresh: When access token expires, refresh token (from httpOnly cookie) 
+     is used to get new access token without re-authentication. This is handled
+     automatically by the frontend when API calls return 401 errors by calling 
+     the /refresh endpoint. If the refresh token is expired or invalid, the user 
+     must log in again.
+     - Store the hashed refresh token in the database for validation
+  5. Security: Refresh tokens are hashed before database storage and rotated on use
+"""
+
+
+def authenticate_user(db: Session, email: str, password: str) -> None | User:
     """Validate credentials and return user object if valid."""
-    user = db.query(User).filter(User.username == username).first()
+    user = db.query(User).filter(User.email == email).first()
     if user is None or not verify_password(password, user.hashed_password):
         return None
     return user
 
 
-def create_jwt_token(user_id: str, username: str) -> str:
+def create_jwt_token(user_id: str, email: str) -> str:
     """Generate a JWT token for authenticated user."""
     now = datetime.now(ZoneInfo("UTC"))
     expire = now + timedelta(minutes=settings.access_token_expire_minutes)
 
-    payload = {"sub": user_id, "username": username, "iat": now, "exp": expire}
+    payload = {"sub": user_id, "email": email, "iat": now, "exp": expire}
 
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
 
-def create_refresh_token(user_id: str, username: str) -> str:
+def create_refresh_token(user_id: str, email: str) -> str:
     """Generate a refresh token for authenticated user."""
     now = datetime.now(ZoneInfo("UTC"))
     expire = now + timedelta(days=settings.refresh_token_expire_days)
 
-    payload = {"sub": user_id, "username": username, "iat": now, "exp": expire}
+    payload = {"sub": user_id, "email": email, "iat": now, "exp": expire}
 
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
@@ -50,28 +69,26 @@ def verify_jwt_token(token: str) -> dict | None:
         return None
 
 
-def verify_refresh_token(token: str) -> dict | None:
+def verify_refresh_token(db: Session, token: str) -> dict | None:
     """Verify the provided refresh token."""
-    # For demo purposes: stub returns valid payload for any non-empty token
-    # Production approach would decode JWT and check database storage/revocation
-    if token:
-        return {
-            "sub": "stub-user",
-            "username": "stub",
-            "iat": datetime.now(UTC),
-            "exp": datetime.now(UTC) + timedelta(days=1),
-        }  # noqa: E501
-    return None
+    try:
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.algorithm]
+        )
+        # Check if token exists in database and is not revoked
+        user = db.query(User).filter(User.id == payload.get("sub")).first()
+        if (
+            user is None
+            or user.refresh_token_hash is None  # Revoked or never logged in
+            or not bcrypt.checkpw(
+                token.encode("utf-8"), user.refresh_token_hash.encode("utf-8")
+            )
+        ):
+            return None
 
-    # Production implementation:
-    # try:
-    #     payload = jwt.decode(
-    #         token, settings.secret_key, algorithms=[settings.algorithm]
-    #     )
-    #     # Check if token exists in database and is not revoked
-    #     return payload
-    # except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
-    #     return None
+        return payload
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return None
 
 
 def hash_password(password: str) -> str:
