@@ -4,6 +4,9 @@ include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
 
+[tool.pylint.main]
+init-hook = "import sys; sys.path.append('.')"
+
 [tool.pylint.messages_control]
 disable = [
     "invalid-name",
