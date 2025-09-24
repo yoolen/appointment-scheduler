@@ -17,6 +17,7 @@ disable = [
     "too-many-ancestors",
     "wrong-import-order",
     "pointless-string-statement",
+    "relative-beyond-top-level",
 ]
 
 [tool.black]
