@@ -1,16 +1,16 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 class LoginInfo(BaseModel):
     email: EmailStr
     password: str
 
-    @validator("email")
-    def normalize_email(cls, v: str) -> str:
+    @field_validator("email")
+    def normalize_email(self, v: str) -> str:
         return v.lower().strip()
 
-    @validator("password")
-    def validate_password(cls, v: str) -> str:
+    @field_validator("password")
+    def validate_password(self, v: str) -> str:
         if not v or v.isspace():
             raise ValueError("Password must not be empty")
         if len(v) < 8:

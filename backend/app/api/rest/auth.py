@@ -76,7 +76,7 @@ def read_current_user(
 
 
 @router.get("/refresh")
-def refresh_token(
+def refresh_jwt_token(
     response: Response,
     db: Session = Depends(get_db),
     refresh_token: str | None = Cookie(None),
