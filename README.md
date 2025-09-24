@@ -443,7 +443,7 @@ compare developer experience and API design patterns.
 - **Database**: PostgreSQL with SQLAlchemy ORM
 - **Frontend**: Vue 3 + TypeScript with API switching capability
 - **Containerization**: Docker Compose for easy setup and deployment
-- **Authentication**: JWT tokens for role-based access control
+- **Authentication**: JWT tokens with httpOnly cookies for role-based access control
 
 ### Getting Started
 ```bash
@@ -514,12 +514,27 @@ appointment-scheduler/
 │   ├── Dockerfile           # Python FastAPI container
 │   ├── requirements.txt     # Python dependencies
 │   └── app/
-│       ├── main.py
-│       ├── models/
-│       ├── api/
-│       │   ├── rest/
-│       │   └── graphql/
-│       └── core/
+│       ├── main.py          # FastAPI app entry point
+│       ├── models/          # SQLAlchemy database models
+│       ├── api/             # API layer (REST + GraphQL)
+│       │   ├── rest/        # FastAPI REST endpoints
+│       │   │   ├── auth.py      # Authentication endpoints
+│       │   │   ├── users.py     # User management (admin only)
+│       │   │   ├── hospitals.py # Hospital data endpoints
+│       │   │   ├── appointments.py # Appointment CRUD
+│       │   │   └── doctors.py   # Doctor availability management
+│       │   └── graphql/     # Strawberry GraphQL schema
+│       │       ├── auth.py      # Auth mutations/queries
+│       │       ├── users.py     # User management schema
+│       │       ├── hospitals.py # Hospital data schema
+│       │       ├── appointments.py # Appointment schema
+│       │       └── doctors.py   # Doctor schema
+│       └── core/            # Business logic and utilities
+│           ├── auth.py          # JWT creation, password hashing
+│           ├── security.py      # FastAPI auth dependencies
+│           ├── permissions.py   # Role-based access control
+│           ├── database.py      # Database connection
+│           └── config.py        # Application configuration
 ├── frontend/
 │   ├── Dockerfile           # Node.js Vue container  
 │   ├── package.json         # npm dependencies
@@ -588,3 +603,123 @@ staff: {id: 201, person_id: 1, department: "Administration", title: "Department 
 
 This design eliminates the constraint issues while providing much better flexibility and
 maintainability for healthcare systems where staff often wear multiple hats.
+
+## API Implementation Plan
+
+### Authentication Architecture
+
+**JWT with httpOnly Cookies Approach:**
+- **Security**: Protects against XSS attacks (JavaScript cannot access httpOnly cookies)
+- **CSRF Protection**: SameSite cookie attributes and CSRF tokens
+- **Token Refresh**: Separate short-lived access tokens (15min) and long-lived refresh
+  tokens (30 days)
+- **Role-Based Access**: JWT payload contains user roles and hospital affiliations for
+  authorization
+
+### API Endpoints
+
+#### Authentication
+```
+POST /auth/login      # Returns httpOnly cookie with JWT
+POST /auth/refresh    # Extends existing cookie with new JWT
+POST /auth/logout     # Clears authentication cookie
+GET  /auth/me         # Get current user info and roles
+```
+
+#### User Management (Admin Only)
+```
+GET    /users         # List all users
+POST   /users         # Create new user
+GET    /users/{id}    # Get user details
+PUT    /users/{id}    # Update user
+DELETE /users/{id}    # Delete user
+```
+
+#### Hospital Data
+```
+GET /hospitals                 # List hospitals
+GET /hospitals/{id}            # Hospital details  
+GET /hospitals/{id}/doctors    # Doctors at hospital
+GET /hospitals/{id}/staff      # Staff at hospital
+```
+
+#### Doctor Availability Management
+```
+GET    /doctors/{doctor_id}/availability           # Get doctor's schedule
+POST   /doctors/{doctor_id}/availability           # Set available time slots
+PUT    /doctors/{doctor_id}/availability/{date}    # Update availability for date
+DELETE /doctors/{doctor_id}/availability/{date}    # Remove availability for date
+```
+
+#### Appointment Management
+```
+GET    /appointments                    # List appointments (filtered by user role)
+POST   /appointments                    # Create new appointment
+GET    /appointments/{id}               # Get appointment details
+PUT    /appointments/{id}               # Update appointment
+DELETE /appointments/{id}               # Cancel appointment
+GET    /appointments/search             # Search/filter appointments
+```
+
+#### Search and Discovery
+```
+GET /doctors/search?hospital_id=1&specialization=cardiology
+GET /appointments/search?hospital_id=1&doctor_id=2&date_range=2024-01-01,2024-01-31
+```
+
+### Role-Based Access Control
+
+**Admin Users:**
+- Full CRUD access to user management
+- Read access to all hospitals, doctors, staff, appointments
+- System administration capabilities
+
+**Staff Users:**
+- CRUD appointments at their assigned hospital only
+- Read access to doctors and patients at their hospital
+- Cannot modify doctor availability
+
+**Doctor Users:**
+- CRUD their own availability schedule
+- CRUD appointments where they are the assigned doctor
+- Read access to their own patients and appointment history
+
+### Authorization Architecture
+
+**Core Authentication Components:**
+
+**`app/core/auth.py`** - Business Logic:
+- `authenticate_user()` - Validate credentials against database
+- `create_jwt_token()` - Generate access tokens with user context
+- `create_refresh_token()` - Generate long-lived refresh tokens
+- `verify_jwt_token()` - Decode and validate token signatures
+- `hash_password()` / `verify_password()` - Secure password handling
+
+**`app/core/security.py`** - FastAPI Dependencies:
+- `get_current_user()` - Extract user from httpOnly cookie
+- `require_admin()` - Admin-only endpoint protection
+- `require_doctor_or_staff()` - Role-based access control
+- `get_hospital_context()` - Hospital-scoped data access
+
+**`app/core/permissions.py`** - Authorization Logic:
+- Role validation and hospital affiliation checks
+- Data filtering based on user permissions
+- Appointment access control (doctors can only see their appointments)
+
+**Authorization Flow:**
+1. Extract JWT from httpOnly cookies
+2. Validate token signature and expiration
+3. Load user with roles (doctor/staff/admin) and hospital affiliations
+4. Apply role-based filtering to database queries
+5. Return data scoped to user's authorized access level
+
+### Future Extensions
+
+**SSO Integration:**
+- SAML/OIDC endpoints for enterprise hospital systems
+- Multi-authentication support (JWT + SSO + API keys)
+
+**Third-Party API Access:**
+- API key authentication for external integrations
+- Rate limiting and vendor-specific permissions
+- Webhook endpoints for appointment notifications

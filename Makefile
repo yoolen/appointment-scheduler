@@ -6,7 +6,7 @@ BACKEND_RUN = @docker compose up -d backend > /dev/null 2>&1; \
 	sleep 5; \
 	docker compose exec --user 1000:1000 backend
 
-.PHONY: black bootstrap isort mypy pyfix pylint update_requirements
+.PHONY: black bootstrap isort mypy pyfix pylint requirements
 
 # Python code formatting with black
 black:
@@ -18,7 +18,7 @@ black:
 bootstrap:
 	@echo "🚀 Bootstrapping development environment..."
 	$(BACKEND_RUN) pip install pip-tools
-	$(MAKE) update_requirements
+	$(MAKE) requirements
 	$(BACKEND_RUN) pip install -r requirements.txt
 	@echo "✅ Development environment ready!"
 
@@ -57,7 +57,7 @@ python:
 	$(BACKEND_RUN) python
 
 # Compile requirements files using pip-tools
-update_requirements:
+requirements:
 	@echo "📦 Compiling requirements..."
 	$(BACKEND_RUN) pip-compile \
 		--cache-dir=~/.cache/pip \

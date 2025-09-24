@@ -3,7 +3,7 @@ alembic
 bcrypt
 fastapi
 psycopg[binary]
-pydantic
+pydantic[email]
 pydantic-settings
 pyjwt
 python-multipart
